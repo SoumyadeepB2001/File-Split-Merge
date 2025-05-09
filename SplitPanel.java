@@ -1,6 +1,6 @@
 import java.awt.Color;
 import java.io.File;
-
+import java.util.Random;
 import javax.swing.*;
 
 class SplitPanel extends JPanel {
@@ -8,6 +8,8 @@ class SplitPanel extends JPanel {
     private final FileSplitMerge compApp;
     private File selectedFile;
     private File selectedFolder;
+    int numOfChunks;
+    short magicNumber;
 
     public SplitPanel(FileSplitMerge compApp) {
         this.compApp = compApp;
@@ -27,8 +29,9 @@ class SplitPanel extends JPanel {
         panel.setBackground(Color.LIGHT_GRAY);
 
         // Row 1: Select File
-        JButton selectFileButton = new JButton("Select File");
+        JButton selectFileButton = new JButton("Select Input File");
         selectFileButton.setBounds(20, 20, 150, 30);
+        selectFileButton.setBackground(new Color(206, 225, 242));
         panel.add(selectFileButton);
 
         JLabel fileLabel = new JLabel("No file selected");
@@ -38,21 +41,37 @@ class SplitPanel extends JPanel {
         // Row 2: Select Output Folder
         JButton selectFolderButton = new JButton("Select Output Folder");
         selectFolderButton.setBounds(20, 70, 150, 30);
+        selectFolderButton.setBackground(new Color(206, 225, 242));
         panel.add(selectFolderButton);
 
         JLabel folderLabel = new JLabel("No folder selected");
         folderLabel.setBounds(180, 70, 500, 30);
         panel.add(folderLabel);
 
-        // Row 3
+        // Row 3: Enter number of chunks and split
+        JLabel numOfChunksLabel = new JLabel("Set the number of chunks (2-100): ");
+        numOfChunksLabel.setBounds(20, 120, 200, 30);
+        panel.add(numOfChunksLabel);
+
+        JTextField txtNumOfChunks = new JTextField();
+        txtNumOfChunks.setBounds(220, 120, 100, 30);
+        panel.add(txtNumOfChunks);
+
+        JButton btnSplit = new JButton("Split");
+        btnSplit.setBounds(330, 120, 100, 30);
+        btnSplit.setBackground(new Color(206, 225, 242));
+        panel.add(btnSplit);
+
+        // Row 4
         JTextArea fileListArea = new JTextArea();
         fileListArea.setEditable(false);
         JScrollPane scrollPane = new JScrollPane(fileListArea);
-        scrollPane.setBounds(20, 120, 660, 250);
+        scrollPane.setBounds(20, 170, 660, 200);
         panel.add(scrollPane);
 
         selectFileButton.addActionListener(e -> selectFile(fileLabel));
         selectFolderButton.addActionListener(e -> selectOutputFolder(folderLabel));
+        btnSplit.addActionListener(e -> splitFile(fileListArea, txtNumOfChunks));
 
         return panel;
     }
@@ -81,5 +100,23 @@ class SplitPanel extends JPanel {
             selectedFolder = folderChooser.getSelectedFile();
             folderLabel.setText(selectedFolder.getAbsolutePath());
         }
+    }
+
+    private void splitFile(JTextArea fileListArea, JTextField txtNumOfChunks) {
+        numOfChunks = Integer.parseInt(txtNumOfChunks.getText().toString());
+
+        if(numOfChunks < 2 || numOfChunks > 100)
+        {
+            JOptionPane.showMessageDialog(null, "Number of chunks must be between 2 and 100.");
+        }
+
+        magicNumber = generateMagicNumber();
+        SplitFile split = new SplitFile(selectedFile, selectedFolder, numOfChunks, fileListArea);
+        split.createParts();
+    }
+
+    public short generateMagicNumber() {
+        Random random = new Random();
+        return (short) (random.nextInt(Short.MAX_VALUE)); // Generates between 0 and 32,767
     }
 }
