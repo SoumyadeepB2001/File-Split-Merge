@@ -1,8 +1,14 @@
 import java.awt.Color;
+import java.io.File;
+import java.util.List;
+import java.util.ArrayList;
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 class MergePanel extends JPanel {
 
+    File metadataFile, outputFolder;
+    List<File> chunkFiles = new ArrayList<>();
     private final FileSplitMerge compApp;
 
     public MergePanel(FileSplitMerge compApp) {
@@ -22,42 +28,94 @@ class MergePanel extends JPanel {
         panel.setLayout(null);
         panel.setBackground(Color.LIGHT_GRAY);
 
-        // Row 1: Select File
-        JButton selectFileButton = new JButton("Select File");
-        selectFileButton.setBounds(20, 20, 150, 30);
-        panel.add(selectFileButton);
+        // Row 1: Select Metadata File
+        JButton selectMetadataButton = new JButton("Select Metadata");
+        selectMetadataButton.setBounds(20, 20, 150, 30);
+        selectMetadataButton.setBackground(new Color(206, 225, 242));
+        panel.add(selectMetadataButton);
 
-        JLabel fileLabel = new JLabel("No file selected");
-        fileLabel.setBounds(180, 20, 500, 30);
-        panel.add(fileLabel);
+        JLabel metadataLabel = new JLabel("No metadata file selected");
+        metadataLabel.setBounds(180, 20, 500, 30);
+        panel.add(metadataLabel);
 
-        // Row 2: Select Output Folder
+        // Row 2: Select Chunk Files
+        JButton selectChunkFilesButton = new JButton("Select Chunk Files");
+        selectChunkFilesButton.setBounds(20, 70, 150, 30);
+        selectChunkFilesButton.setBackground(new Color(206, 225, 242));
+        panel.add(selectChunkFilesButton);
+
+        JTextArea chunkFilesArea = new JTextArea();
+        chunkFilesArea.setEditable(false);
+        JScrollPane chunkScrollPane = new JScrollPane(chunkFilesArea);
+        chunkScrollPane.setBounds(180, 70, 500, 150);
+        panel.add(chunkScrollPane);
+
+        // Row 3: Select Output Folder
         JButton selectFolderButton = new JButton("Select Output Folder");
-        selectFolderButton.setBounds(20, 70, 150, 30);
+        selectFolderButton.setBounds(20, 240, 150, 30);
+        selectFolderButton.setBackground(new Color(206, 225, 242));
         panel.add(selectFolderButton);
 
         JLabel folderLabel = new JLabel("No folder selected");
-        folderLabel.setBounds(180, 70, 500, 30);
+        folderLabel.setBounds(180, 240, 500, 30);
         panel.add(folderLabel);
 
-        // Row 3
-        JTextArea fileListArea = new JTextArea();
-        fileListArea.setEditable(false);
-        JScrollPane scrollPane = new JScrollPane(fileListArea);
-        scrollPane.setBounds(20, 120, 660, 250);
-        panel.add(scrollPane);
+        // Row 4: Merge button and ouput location
+        JButton mergeButton = new JButton("Merge Parts");
+        mergeButton.setBounds(20, 290, 150, 30);
+        mergeButton.setBackground(new Color(206, 225, 242));
+        panel.add(mergeButton);
 
-        selectFileButton.addActionListener(e -> selectFiles());
+        JLabel outputFileLabel = new JLabel("Merged file location will be shown here");
+        outputFileLabel.setBounds(180, 290, 660, 30);
+        panel.add(outputFileLabel);
+
+        selectMetadataButton.addActionListener(e -> selectMetadataFile(metadataLabel));
+        selectChunkFilesButton.addActionListener(e -> selectChunkFiles(chunkFilesArea));
         selectFolderButton.addActionListener(e -> selectOutputFolder(folderLabel));
 
         return panel;
     }
 
-    private void selectFiles() {
+    private void selectMetadataFile(JLabel metadataLabel) {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Metadata Files", "part"));
+        int result = fileChooser.showOpenDialog(this);
 
+        if (result == JFileChooser.APPROVE_OPTION) {
+            metadataFile = fileChooser.getSelectedFile();
+            metadataLabel.setText(metadataFile.getAbsolutePath());
+        }
+    }
+
+    private void selectChunkFiles(JTextArea chunkFilesArea) {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        fileChooser.setMultiSelectionEnabled(true);
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Chunk Files", "part"));
+
+        int result = fileChooser.showOpenDialog(this);
+
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File[] files = fileChooser.getSelectedFiles();
+            chunkFiles.clear();
+            chunkFilesArea.setText("");
+            for (File file : files) {
+                chunkFiles.add(file);
+                chunkFilesArea.append(file.getAbsolutePath() + "\n");
+            }
+        }
     }
 
     private void selectOutputFolder(JLabel folderLabel) {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 
+        int result = fileChooser.showOpenDialog(this);
+
+        if (result == JFileChooser.APPROVE_OPTION) {
+            outputFolder = fileChooser.getSelectedFile();
+            folderLabel.setText(outputFolder.getAbsolutePath());
+        }
     }
 }
