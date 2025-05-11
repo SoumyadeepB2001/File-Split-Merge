@@ -161,6 +161,8 @@ public class MergeFiles {
 
     // Merges all the chunks into a single output file
     private String createNewFile(Map<Integer, File> mapping) {
+
+        // Determine the output filename
         String outputFileName;
         if (originalFileName != null && !originalFileName.isEmpty()) {
             outputFileName = outputFolder.getAbsolutePath() + File.separator + originalFileName;
@@ -168,10 +170,12 @@ public class MergeFiles {
             outputFileName = outputFolder.getAbsolutePath() + File.separator + "output";
         }
 
+        // Start merging process
         try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(outputFileName))) {
             long startTime = System.nanoTime();
             byte[] buffer = new byte[4096];
 
+            // Iterate through all the chunks in order
             for (int i = 1; i <= numberOfChunks; i++) {
                 File chunkFile = mapping.get(i);
 
@@ -180,8 +184,11 @@ public class MergeFiles {
                 }
 
                 try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(chunkFile))) {
+                    // Skip the 7-byte header 
+                    // 1 byte for index, 2 bytes for magic number, 4 bytes for chunk size
                     long skipped = in.skip(7);
 
+                    // Validation: If the header is not fully skipped, something is wrong
                     if (skipped < 7) {
                         return "Error: Failed to skip header in chunk: " + chunkFile.getName();
                     }
