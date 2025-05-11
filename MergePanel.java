@@ -73,8 +73,15 @@ class MergePanel extends JPanel {
         selectMetadataButton.addActionListener(e -> selectMetadataFile(metadataLabel));
         selectChunkFilesButton.addActionListener(e -> selectChunkFiles(chunkFilesArea));
         selectFolderButton.addActionListener(e -> selectOutputFolder(folderLabel));
+        mergeButton.addActionListener(e -> startMergingParts(outputFileLabel));
 
         return panel;
+    }
+
+    private void startMergingParts(JLabel outputFileLabel) {
+        MergeFiles merge = new MergeFiles(metadataFile, outputFolder, chunkFiles);
+        String outputFileLocation = merge.mergeFile();
+        outputFileLabel.setText("File merged successfully at: " + outputFileLocation);
     }
 
     private void selectMetadataFile(JLabel metadataLabel) {
