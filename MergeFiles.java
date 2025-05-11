@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,7 @@ public class MergeFiles {
     private String originalFileName;
     private long originalFileSize;
     private int numberOfChunks;
+    private boolean isMetadataPresent = true;
 
     MergeFiles(File metadataFile, File outputFolder, List<File> chunkFiles) {
         this.metadataFile = metadataFile;
@@ -42,6 +44,7 @@ public class MergeFiles {
                     JOptionPane.WARNING_MESSAGE);
 
             if (response != JOptionPane.YES_OPTION) {
+                isMetadataPresent = false;
                 return "Metadata validation failed.";
             }
 
@@ -118,40 +121,80 @@ public class MergeFiles {
     private Map<Integer, File> createFileMapping() {
         Map<Integer, File> fileMapping = new HashMap<>();
 
-        for (File chunk : chunkFiles) {
-            try (RandomAccessFile raf = new RandomAccessFile(chunk, "r")) {
-                // Read the index from the first byte of the chunk
-                int chunkIndex = raf.readUnsignedByte();
+        // If metadata is not present, we don't know the number of chunks
+        if (!isMetadataPresent) {
+            System.out.println("Metadata file is missing. Performing sequence gap check...");
 
-                // Read the magic number to verify
-                short chunkMagicNumber = raf.readShort();
+            List<Integer> foundIndexes = new ArrayList<>();
 
-                // Check if the magic number matches
-                if (chunkMagicNumber != magicNumber) {
-                    System.out.println("Error: Chunk " + chunk.getName() + " has a mismatched magic number.");
+            for (File chunk : chunkFiles) {
+                try (RandomAccessFile raf = new RandomAccessFile(chunk, "r")) {
+                    int chunkIndex = raf.readUnsignedByte();
+                    short chunkMagicNumber = raf.readShort();
+
+                    // If the magic number is incorrect, fail immediately
+                    if (chunkMagicNumber != magicNumber) {
+                        System.out.println("Error: Chunk " + chunk.getName() + " has a mismatched magic number.");
+                        return null;
+                    }
+
+                    // If the index is already present, fail
+                    if (fileMapping.containsKey(chunkIndex)) {
+                        System.out.println("Error: Duplicate chunk index found for " + chunk.getName());
+                        return null;
+                    }
+
+                    // Add to map and keep track of found indexes
+                    fileMapping.put(chunkIndex, chunk);
+                    foundIndexes.add(chunkIndex);
+
+                } catch (IOException e) {
+                    System.out.println("Error: Failed to read chunk file: " + chunk.getName());
                     return null;
                 }
-
-                // Check for duplicate indices
-                if (fileMapping.containsKey(chunkIndex)) {
-                    System.out.println("Error: Duplicate chunk index found for " + chunk.getName());
-                    return null;
-                }
-
-                // Add the file to the map if all checks pass
-                fileMapping.put(chunkIndex, chunk);
-
-            } catch (IOException e) {
-                System.out.println("Error: Failed to read chunk file: " + chunk.getName());
-                return null;
             }
-        }
 
-        // Verify that the map contains all the chunks from 1 to numberOfChunks
-        for (int i = 1; i <= numberOfChunks; i++) {
-            if (!fileMapping.containsKey(i)) {
-                System.out.println("Error: Missing chunk with index " + i);
-                return null;
+            // Sort the found indexes and check for gaps
+            Collections.sort(foundIndexes);
+            for (int i = 1; i < foundIndexes.size(); i++) {
+                if (foundIndexes.get(i) != foundIndexes.get(i - 1) + 1) {
+                    System.out.println(
+                            "Error: Missing chunk between " + foundIndexes.get(i - 1) + " and " + foundIndexes.get(i));
+                    return null;
+                }
+            }
+
+        } else {
+            // Normal case when metadata is present
+            for (File chunk : chunkFiles) {
+                try (RandomAccessFile raf = new RandomAccessFile(chunk, "r")) {
+                    int chunkIndex = raf.readUnsignedByte();
+                    short chunkMagicNumber = raf.readShort();
+
+                    if (chunkMagicNumber != magicNumber) {
+                        System.out.println("Error: Chunk " + chunk.getName() + " has a mismatched magic number.");
+                        return null;
+                    }
+
+                    if (fileMapping.containsKey(chunkIndex)) {
+                        System.out.println("Error: Duplicate chunk index found for " + chunk.getName());
+                        return null;
+                    }
+
+                    fileMapping.put(chunkIndex, chunk);
+
+                } catch (IOException e) {
+                    System.out.println("Error: Failed to read chunk file: " + chunk.getName());
+                    return null;
+                }
+            }
+
+            // Verify if all expected chunks are present
+            for (int i = 1; i <= numberOfChunks; i++) {
+                if (!fileMapping.containsKey(i)) {
+                    System.out.println("Error: Missing chunk with index " + i);
+                    return null;
+                }
             }
         }
 
@@ -168,6 +211,11 @@ public class MergeFiles {
             outputFileName = outputFolder.getAbsolutePath() + File.separator + originalFileName;
         } else {
             outputFileName = outputFolder.getAbsolutePath() + File.separator + "output";
+        }
+
+        if(isMetadataPresent)
+        {
+            numberOfChunks = mapping.size();
         }
 
         // Start merging process
