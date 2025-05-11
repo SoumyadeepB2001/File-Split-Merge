@@ -11,10 +11,12 @@ public class ReadMetadata {
     private static final int FILESIZE_SIZE = 8;
 
     public ReadMetadata(File metadataFile) {
-        if (!metadataFile.exists() || !metadataFile.isFile()) {
-            throw new IllegalArgumentException("Metadata file not found.");
-        }
         this.metadataFile = metadataFile;
+    }
+
+    public boolean isValid() {
+        return metadataFile != null && metadataFile.exists() && metadataFile.isFile()
+                && metadataFile.length() >= (INDEX_SIZE + MAGIC_NUMBER_SIZE);
     }
 
     // Reads the index number

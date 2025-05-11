@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.swing.JOptionPane;
+
 public class MergeFiles {
     private File metadataFile = null, outputFolder = null;
     private List<File> chunkFiles;
@@ -29,28 +31,49 @@ public class MergeFiles {
         try {
             validateMetadataFile();
         } catch (IOException e) {
+
             System.out.println("Validation failed: " + e.getMessage());
-            return null;
+
+            int response = JOptionPane.showConfirmDialog(
+                    null,
+                    "Validation failed. Would you like to continue?",
+                    "Validation Warning",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+
+            if (response != JOptionPane.YES_OPTION) {
+                return "Metadata validation failed.";
+            }
+
         }
 
         Map<Integer, File> mapping = createFileMapping();
         if (mapping == null) {
             System.out.println("Error: Invalid file mapping.");
-            return null;
+            return "Error: Invalid file mapping.";
         } else {
             System.out.println("Merge can proceed.");
         }
 
         String outputFileLocation = createNewFile(mapping);
         if (outputFileLocation != null) {
-            System.out.println("File merged successfully at: " + outputFileLocation);
+            return "File merged successfully at: " + outputFileLocation;
         }
 
-        return outputFileLocation;
+        return "An error occured";
     }
 
     private void validateMetadataFile() throws IOException {
+
+        if (metadataFile == null || !metadataFile.exists() || !metadataFile.isFile()) {
+            throw new IOException("Metadata file is missing or not a valid file.");
+        }
+
         ReadMetadata meta = new ReadMetadata(metadataFile);
+
+        if (!meta.isValid()) {
+            throw new IOException("Metadata file is empty or too short.");
+        }
 
         // Read the index
         index = meta.readIndex();
@@ -138,7 +161,6 @@ public class MergeFiles {
 
     // Merges all the chunks into a single output file
     private String createNewFile(Map<Integer, File> mapping) {
-        // Determine the output filename
         String outputFileName;
         if (originalFileName != null && !originalFileName.isEmpty()) {
             outputFileName = outputFolder.getAbsolutePath() + File.separator + originalFileName;
@@ -146,29 +168,22 @@ public class MergeFiles {
             outputFileName = outputFolder.getAbsolutePath() + File.separator + "output";
         }
 
-        // Start merging process
         try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(outputFileName))) {
             long startTime = System.nanoTime();
             byte[] buffer = new byte[4096];
 
-            // Iterate through all the chunks in order
             for (int i = 1; i <= numberOfChunks; i++) {
                 File chunkFile = mapping.get(i);
 
                 if (chunkFile == null || !chunkFile.exists()) {
-                    System.err.println("Missing or invalid chunk: chunk_" + i + ".part");
-                    return null;
+                    return "Error: Missing or invalid chunk: chunk_" + i + ".part";
                 }
 
                 try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(chunkFile))) {
-                    // Skip the 11-byte header (1 byte for index, 2 bytes for magic number, 8 bytes
-                    // for chunk size)
                     long skipped = in.skip(7);
 
-                    // Validation: If the header is not fully skipped, something is wrong
                     if (skipped < 7) {
-                        System.err.println("Failed to skip header in chunk: " + chunkFile.getName());
-                        return null;
+                        return "Error: Failed to skip header in chunk: " + chunkFile.getName();
                     }
 
                     int bytesRead;
@@ -176,8 +191,7 @@ public class MergeFiles {
                         out.write(buffer, 0, bytesRead);
                     }
                 } catch (IOException e) {
-                    System.err.println("Error reading chunk: " + chunkFile.getName() + " - " + e.getMessage());
-                    return null;
+                    return "Error reading chunk: " + chunkFile.getName() + " - " + e.getMessage();
                 }
             }
 
@@ -188,8 +202,7 @@ public class MergeFiles {
             return outputFileName;
 
         } catch (IOException e) {
-            System.err.println("Error during file merge: " + e.getMessage());
-            return null;
+            return "Error during file merge: " + e.getMessage();
         }
     }
 }

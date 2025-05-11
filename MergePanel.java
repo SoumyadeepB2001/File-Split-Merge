@@ -81,7 +81,7 @@ class MergePanel extends JPanel {
     private void startMergingParts(JLabel outputFileLabel) {
         MergeFiles merge = new MergeFiles(metadataFile, outputFolder, chunkFiles);
         String outputFileLocation = merge.mergeFile();
-        outputFileLabel.setText("File merged successfully at: " + outputFileLocation);
+        outputFileLabel.setText(outputFileLocation);
     }
 
     private void selectMetadataFile(JLabel metadataLabel) {
