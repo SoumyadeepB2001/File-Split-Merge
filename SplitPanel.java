@@ -1,4 +1,6 @@
 import java.awt.Color;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.util.Random;
 import javax.swing.*;
@@ -55,6 +57,34 @@ class SplitPanel extends JPanel {
 
         JTextField txtNumOfChunks = new JTextField();
         txtNumOfChunks.setBounds(220, 120, 100, 30);
+        // Add key listener to restrict input
+        txtNumOfChunks.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                char c = e.getKeyChar();
+                String currentText = txtNumOfChunks.getText();
+
+                // Allow backspace
+                if (c == '\b') return;
+
+                // Block non-digits
+                if (!Character.isDigit(c)) {
+                    e.consume();
+                    return;
+                }
+
+                // Predict future text after typing this character
+                String futureText = currentText + c;
+                try {
+                    int value = Integer.parseInt(futureText);
+                    if (value < 1 || value > 100) {
+                        e.consume(); // Block out-of-range value
+                    }
+                } catch (NumberFormatException ex) {
+                    e.consume(); // Block overflow or bad format
+                }
+            }
+        });
         panel.add(txtNumOfChunks);
 
         JButton btnSplit = new JButton("Split");
